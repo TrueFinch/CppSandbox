@@ -5,3 +5,4 @@ find_package(Catch2 CONFIG REQUIRED)
 
 add_subdirectory(Lambda)
 add_subdirectory(MyAny)
+add_subdirectory(TypePrinter)
