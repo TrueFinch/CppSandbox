@@ -10,12 +10,13 @@
 namespace myspace {
 	class my_any_bad_cast final: public std::bad_cast {};
 
-	class MyAny final {
+	class Any final {
 		class Base {
 		public:
 			virtual ~Base() = default;
 
 			[[nodiscard]] virtual const std::type_info& Type() const = 0;
+			// [[nodiscard]] virtual std::unique_ptr<Base> Clone() const = 0;
 		};
 
 		template<typename T>
@@ -25,7 +26,11 @@ namespace myspace {
 				return typeid(T);
 			}
 
-			const T& GetValue() const {
+			// [[nodiscard]] std::unique_ptr<Base> Clone() const override {
+			// 	return std::make_unique<Container<T>>(value);
+			// }
+
+			[[nodiscard]] const T& GetValue() const {
 				return value;
 			}
 
@@ -43,14 +48,42 @@ namespace myspace {
 		std::unique_ptr<Base> ptr;
 
 	public:
-		MyAny(): ptr(nullptr) {}
+		Any(): ptr(nullptr) {}
 
 		template<typename T>
-		explicit MyAny(T value) {
+		explicit Any(T value) {
 			ptr = std::make_unique<Container<T>>(std::move(value));
 		}
 
-		MyAny& Reset() {
+		// Any(const Any& other) {
+		// 	if (other.ptr) {
+		// 		ptr = other.ptr->Clone();
+		// 	} else {
+		// 		ptr = nullptr;
+		// 	}
+		// }
+		//
+		// Any(Any&& other) noexcept : ptr(std::move(other.ptr)) {}
+
+		// Any& operator=(const Any& other) {
+		// 	if (this != &other) {
+		// 		if (other.ptr) {
+		// 			ptr = other.ptr->Clone();
+		// 		} else {
+		// 			ptr = nullptr;
+		// 		}
+		// 	}
+		// 	return *this;
+		// }
+		//
+		// Any& operator=(Any&& other) noexcept {
+		// 	if (this != &other) {
+		// 		ptr = std::move(other.ptr);
+		// 	}
+		// 	return *this;
+		// }
+
+		Any& Reset() {
 			ptr.reset(nullptr);
 			return *this;
 		}
@@ -82,23 +115,23 @@ namespace myspace {
 	};
 
 	template<typename T>
-	T my_any_cast(const MyAny& any) {
-		if (any.HasType<T>()) {
-			return *any.Get<T>();
+	T my_any_cast(const Any& any) {
+		if (auto valuePtr = any.Get<T>()) {
+			return *valuePtr;
 		}
 		throw my_any_bad_cast();
 	}
 
 	template<typename T>
-	T my_any_cast(MyAny& any) {
-		if (any.HasType<T>()) {
-			return *any.Get<T>();
+	T my_any_cast(Any& any) {
+		if (auto valuePtr = any.Get<T>()) {
+			return *valuePtr;
 		}
 		throw my_any_bad_cast();
 	}
 
 	template<typename T>
-	T* my_any_cast(MyAny* any) {
+	T* my_any_cast(Any* any) {
 		if (!any) {
 			return nullptr;
 		}
@@ -106,7 +139,7 @@ namespace myspace {
 	}
 
 	template<typename T>
-	const T* my_any_cast(const MyAny* any) {
+	const T* my_any_cast(const Any* any) {
 		if (!any) {
 			return nullptr;
 		}
