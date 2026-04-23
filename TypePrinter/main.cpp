@@ -2,6 +2,7 @@
 // Created by Vladimir on 20.04.2026.
 //
 
+#include <cstdint>
 #include <iostream>
 
 #include "type_name.h"
@@ -13,6 +14,5 @@ public:
 
 int main() {
 	std::cout << my::has_valid_name<MyMainClass> << std::endl;
-
 	return 0;
 }
