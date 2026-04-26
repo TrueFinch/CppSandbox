@@ -11,6 +11,29 @@
 
 namespace my {
 	template<typename T>
+	constexpr bool always_false_v = false;
+
+	// Users can specialize this struct to add support for other fundamental types
+	template<typename T>
+	struct fundamental_type_name {
+		static_assert(always_false_v<T>,
+					"Unsupported fundamental type! Please, specialize my::fundamental_type_name<T>.");
+
+		static std::string name() { return "unknown"; }
+	};
+
+	// @formatter:off
+	template<> struct fundamental_type_name<int> { static std::string name() { return "int"; } };
+	template<> struct fundamental_type_name<float> { static std::string name() { return "float"; } };
+	template<> struct fundamental_type_name<double> { static std::string name() { return "double"; } };
+	template<> struct fundamental_type_name<char> { static std::string name() { return "char"; } };
+	template<> struct fundamental_type_name<bool> { static std::string name() { return "bool"; } };
+	template<> struct fundamental_type_name<long> { static std::string name() { return "long"; } };
+	template<> struct fundamental_type_name<long long> { static std::string name() { return "long long"; } };
+	template<> struct fundamental_type_name<void> { static std::string name() { return "void"; } };
+	// @formatter:on
+
+	template<typename T>
 	concept has_valid_name = requires
 	{
 		{ T::name } -> std::convertible_to<std::string_view>;
@@ -39,18 +62,7 @@ namespace my {
 			}
 			// 4. Handle fundamental types
 			else if constexpr (std::is_fundamental_v<T>) {
-				if constexpr (std::is_same_v<T, int>) return "int";
-				else if constexpr (std::is_same_v<T, float>) return "float";
-				else if constexpr (std::is_same_v<T, double>) return "double";
-				else if constexpr (std::is_same_v<T, char>) return "char";
-				else if constexpr (std::is_same_v<T, bool>) return "bool";
-				else if constexpr (std::is_same_v<T, long>) return "long";
-				else if constexpr (std::is_same_v<T, long long>) return "long long";
-				else if constexpr (std::is_same_v<T, void>) return "void";
-				else {
-					static_assert(false, "Unsupported fundamental type!");
-					return "unknown";
-				}
+				return fundamental_type_name<T>::name();
 			}
 			// 5. Handle custom classes (via concept)
 			else if constexpr (has_valid_name<T>) {
