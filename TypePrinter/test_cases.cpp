@@ -5,7 +5,6 @@
 #include "type_name.h"
 #include <string>
 
-
 TEST_CASE("TypePrinter fundamental types", "[TypePrinter]") {
 	SECTION("simple types") {
 		CHECK(my::type_name<int>::name() == "int");
@@ -65,6 +64,10 @@ TEST_CASE("TypePrinter fundamental types", "[TypePrinter]") {
 		// rvalue ref on float/double
 		CHECK(my::type_name<float&&>::name() == "float&&");
 	}
+
+	// SECTION("unsupported fundamental types") {
+	// 	CHECK_FALSE(my::type_name<unsigned>::name() == "unsigned");
+	// }
 }
 
 TEST_CASE("TypePrinter containers", "[TypePrinter]") {
@@ -85,6 +88,13 @@ TEST_CASE("TypePrinter containers", "[TypePrinter]") {
 		CHECK(my::type_name<std::vector<int&>>::name() == "vector<int&>");
 		CHECK(my::type_name<std::vector<int*>>::name() == "vector<int*>");
 	}
+
+	SECTION("vector of func pointers") {
+		using pf4 = void (*)();
+		CHECK(my::type_name<std::vector<pf4>>::name() == "vector<void(*)()>");
+	}
+
+	SECTION("unordered_map<int, int>") {}
 }
 
 namespace test_functions {
@@ -116,13 +126,13 @@ namespace test_functions2 {
 }
 
 TEST_CASE("TypePrinter functions", "[TypePrinter]") {
-	using namespace test_functions;
 	SECTION("function") {
+		using namespace test_functions;
 		CHECK(my::type_name<decltype(f)>::name() == "void(int)");
 	}
 
-	using namespace test_functions2;
 	SECTION("function variations") {
+		using namespace test_functions2;
 		// empty args
 		CHECK(my::type_name<decltype(f_void_empty)>::name() == "void()");
 
@@ -157,6 +167,18 @@ TEST_CASE("TypePrinter functions", "[TypePrinter]") {
 		// complex return: const reference to pointer
 		CHECK(my::type_name<decltype(f_return_const_ref_ptr)>::name() == "const int*&(const int*&, const int* const&)");
 	}
+
+	SECTION("reference to function") {
+		using namespace test_functions;
+		auto f = test_functions::f;
+		auto& f2 = f;
+		// reference to function
+		CHECK(my::type_name<void(&)()>::name() == "void(&)()");
+		// reference to function
+		CHECK(my::type_name<decltype(f)>::name() == "void(*)(int)");
+		// reference to pointer to function
+		CHECK(my::type_name<decltype(f2)>::name() == "void(*&)(int)");
+	}
 }
 
 namespace test_func_ptrs {
@@ -172,15 +194,15 @@ namespace test_func_ptrs {
 
 TEST_CASE("TypePrinter function pointers", "[TypePrinter]") {
 	SECTION("function pointer types") {
-		using pf1 = void (*)(int);
-		using pf2 = double (*)(double, char);
-		using pf3 = void (*)();
-		using pf4 = const int* (*)(const int&);
+		using pf1 = void(*)(int);
+		using pf2 = double(*)(double, char);
+		using pf3 = void(*)();
+		using pf4 = const int*(*)(const int&);
 
-		CHECK(my::type_name<pf1>::name() == "void (*)(int)");
-		CHECK(my::type_name<pf2>::name() == "double (*)(double, char)");
-		CHECK(my::type_name<pf3>::name() == "void (*)()");
-		CHECK(my::type_name<pf4>::name() == "const int* (*)(const int&)");
+		CHECK(my::type_name<pf1>::name() == "void(*)(int)");
+		CHECK(my::type_name<pf2>::name() == "double(*)(double, char)");
+		CHECK(my::type_name<pf3>::name() == "void(*)()");
+		CHECK(my::type_name<pf4>::name() == "const int*(*)(const int&)");
 	}
 
 	// SECTION("function pointer const variations") {
@@ -191,12 +213,30 @@ TEST_CASE("TypePrinter function pointers", "[TypePrinter]") {
 	// 	CHECK(my::type_name<std::remove_pointer_t<decltype(cfp2)>>::name() == "double(double, char) const");
 	// }
 
-	SECTION("pointer to pointer to function") {
-		using pfp1 = void (**)(int);
-		using pfp2 = double (**)(double, char);
+	SECTION("double pointer to function") {
+		using pfp1 = void(**)(int);
+		using pfp2 = double(**)(double, char);
 
-		CHECK(my::type_name<pfp1>::name() == "void (**)(int)");
-		CHECK(my::type_name<pfp2>::name() == "double (**)(double, char)");
+		CHECK(my::type_name<pfp1>::name() == "void(**)(int)");
+		CHECK(my::type_name<pfp2>::name() == "double(**)(double, char)");
+	}
+
+	SECTION("triple pointer to function") {
+		using pfp1 = void (***)(int);
+		using pfp2 = double (***)(double, char);
+
+		CHECK(my::type_name<pfp1>::name() == "void(***)(int)");
+		CHECK(my::type_name<pfp2>::name() == "double(***)(double, char)");
+	}
+
+	SECTION("pointer to function receiving pointer to function") {
+		using pfp1 = void(*)(void (*)());
+		CHECK(my::type_name<pfp1>::name() == "void(*)(void(*)())");
+	}
+
+	SECTION("const pointer to function") {
+		using pfp1 = void(* const)(int);
+		CHECK(my::type_name<pfp1>::name() == "void(* const)(int)");
 	}
 }
 
