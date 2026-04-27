@@ -4,6 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "type_name.h"
 #include <string>
+#include <map>
 
 TEST_CASE("TypePrinter fundamental types", "[TypePrinter]") {
 	SECTION("simple types") {
@@ -240,6 +241,7 @@ TEST_CASE("TypePrinter function pointers", "[TypePrinter]") {
 	}
 }
 
+
 namespace test_classes {
 	class MyClass {
 	public:
@@ -247,9 +249,22 @@ namespace test_classes {
 	};
 
 	struct MyStruct {
-		constexpr static std::string_view name = "MyStruct";
+		// constexpr static std::string_view name = "MyStruct";
+	};
+
+
+	template<typename T>
+	struct MyTemplateClass {
+		constexpr static std::string_view name = "MyTemplateClass";
 	};
 }
+
+REGISTER_TYPE_NAME(test_classes::MyStruct, "MyStruct");
+
+REGISTER_TYPE_NAME(test_classes::MyClass, "MyClass");
+
+REGISTER_TEMPLATE_TYPENAME(test_classes::MyTemplateClass, "MyTemplateClass");
+
 
 TEST_CASE("TypePrinter custom classes", "[TypePrinter]") {
 	using namespace test_classes;
@@ -268,5 +283,50 @@ TEST_CASE("TypePrinter custom classes", "[TypePrinter]") {
 		CHECK(my::type_name<MyStruct>::name() == "MyStruct");
 		CHECK(my::type_name<MyStruct&>::name() == "MyStruct&");
 		CHECK(my::type_name<const MyStruct*>::name() == "const MyStruct*");
+	}
+
+	SECTION("MyTemplateClass") {
+		CHECK(my::type_name<MyTemplateClass<int>>::name() == "MyTemplateClass<int>");
+	}
+}
+
+
+TEST_CASE("Template class parameters", "[TypePrinter]") {
+	SECTION("map types") {
+		CHECK(my::type_name<std::map<int, int>>::name() == "unknown<int, int>");
+		CHECK(my::type_name<std::map<int, std::vector<double>>>::name() == "unknown<int, vector<double>>");
+	}
+
+	SECTION("pair types") {
+		CHECK(my::type_name<std::pair<int, double>>::name() == "unknown<int, double>");
+		CHECK(my::type_name<std::pair<std::string, std::string>>::name() == "unknown<string, string>");
+	}
+
+	SECTION("optional types") {
+		CHECK(my::type_name<std::optional<int>>::name() == "unknown<int>");
+		CHECK(my::type_name<std::optional<std::string>>::name() == "unknown<string>");
+	}
+
+	SECTION("tuple types") {
+		CHECK(my::type_name<std::tuple<int, std::string, double>>::name() == "unknown<int, string, double>");
+	}
+
+	SECTION("variant types") {
+		CHECK(my::type_name<std::variant<int, double>>::name() == "unknown<int, double>");
+	}
+
+	SECTION("shared_ptr types") {
+		CHECK(my::type_name<std::shared_ptr<int>>::name() == "unknown<int>");
+		CHECK(my::type_name<std::shared_ptr<std::string>>::name() == "unknown<string>");
+	}
+
+	SECTION("const template params") {
+		CHECK(my::type_name<const std::map<int, int>&>::name() == "const unknown<int, int>&");
+		CHECK(my::type_name<const std::map<int, int>*>::name() == "const unknown<int, int>*");
+		CHECK(my::type_name<std::map<int, int>* const>::name() == "unknown<int, int>* const");
+	}
+
+	SECTION("pointer template params") {
+		CHECK(my::type_name<std::map<int, int>*>::name() == "unknown<int, int>*");
 	}
 }
