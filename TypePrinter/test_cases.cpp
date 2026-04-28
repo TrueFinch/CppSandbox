@@ -260,7 +260,7 @@ REGISTER_TYPE_NAME(test_classes::MyStruct, "MyStruct");
 
 REGISTER_TYPE_NAME(test_classes::MyClass, "MyClass");
 
-REGISTER_TEMPLATE_TYPENAME(test_classes::MyTemplateClass, "MyTemplateClass");
+REGISTER_TEMPLATE_TYPE_NAME(test_classes::MyTemplateClass, "MyTemplateClass");
 
 
 TEST_CASE("TypePrinter custom classes", "[TypePrinter]") {
@@ -287,6 +287,20 @@ TEST_CASE("TypePrinter custom classes", "[TypePrinter]") {
 	}
 }
 
+SHOW_TEMPLATE_ARG_TYPE_NAME(std::allocator<test_classes::MyStruct>)
+
+namespace test_classes {
+	struct HiddenStruct {};
+
+	template<typename T>
+	struct TemplateHiddenStruct {};
+}
+
+HIDE_TEMPLATE_ARG_TYPE_NAME(test_classes::MyTemplateClass<int>)
+
+HIDE_TEMPLATE_ARG_TYPE_NAME(std::allocator<test_classes::HiddenStruct>)
+
+HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(test_classes::TemplateHiddenStruct);
 
 TEST_CASE("Template class parameters", "[TypePrinter]") {
 	SECTION("map types") {
@@ -353,7 +367,14 @@ TEST_CASE("Template class parameters", "[TypePrinter]") {
 	}
 
 	SECTION("hidden template args - custom hidden") {
-		CHECK(my::type_name<test_classes::MyTemplateClass<int>>::name() == "MyTemplateClass<int>");
-		CHECK(my::type_name<test_classes::MyTemplateClass<std::string>>::name() == "MyTemplateClass<string>");
+		CHECK(my::type_name<std::vector<test_classes::MyTemplateClass<int>>>::name() == "vector<>");
+		CHECK(my::type_name<std::vector<test_classes::TemplateHiddenStruct<int>>>::name() == "vector<>");
+	}
+
+	SECTION("hidden template args - custom showed") {
+		// This tests that a specific type can be shown while others remain hidden
+		// std::allocator<int> should be shown, but other allocators should be hidden
+		CHECK(my::type_name<std::vector<test_classes::MyStruct,
+			std::allocator<test_classes::MyStruct>>>::name() == "vector<MyStruct, allocator<MyStruct>>");
 	}
 }

@@ -43,77 +43,25 @@ namespace my {
 			static std::string name() { return "unknown"; }
 		};
 
-#define REGISTER_FUNDAMENTAL_TYPE(Type, Name)\
-namespace my::detail {\
-template<>\
-struct fundamental_type_name<Type> {\
-static std::string name() {\
-return Name;\
-}\
-};\
-}
+		template<typename T>
+		constexpr std::string_view type_name_v = "unknown";
 
 		template<template<typename...> class C>
 		constexpr std::string_view template_type_name_v = "unknown";
 
-#define REGISTER_TEMPLATE_TYPENAME(Template, Name)\
-namespace my::detail {\
-template<>\
-constexpr std::string_view template_type_name_v<Template> = Name;\
-}
-
-		template<typename T>
-		constexpr std::string_view type_name_v = "unknown";
-
-#define REGISTER_TYPE_NAME(Type, Name)\
-namespace my::detail {\
-template<> constexpr std::string_view type_name_v<Type> = Name;\
-}
-
-		// ---- is_hidden_template_arg & is_hidden_class_template_arg_v ----
-
-		// Трейт для точного совпадения типа (срабатывает при точном совпадении)
-		template<typename T>
-		concept is_hidden_template_arg = false;
-
-#define REGISTER_HIDDEN_TEMPLATE_ARG(Type)\
-namespace my::detail {\
-template<>\
-concept is_hidden_template_arg<Type> = true;\
-}
-
-		// Трейт для шаблонных классов (срабатывает для всех спецификаций Template<Args...>)
 		template<typename T>
 		inline constexpr bool is_hidden_class_template_arg_v = false;
 
-#define REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(Template)\
-namespace my::detail {\
-template<typename... Args>\
-inline constexpr bool is_hidden_class_template_arg_v<Template<Args...>> = true;\
-}
-
-#define UNREGISTER_HIDDEN_TEMPLATE_ARG_CLASS(Template)\
-namespace my::detail {\
-template<typename... Args>\
-inline constexpr bool is_hidden_class_template_arg_v<Template<Args...>> = false;\
-}
-
-		// Комбинированный трейт — аргумент нужно скрывать
 		template<typename T>
-		concept is_hidden_arg = is_hidden_template_arg<T> || is_hidden_class_template_arg_v<T>;
+		concept is_hidden_arg = is_hidden_class_template_arg_v<T>;
 
-		template<bool Hidden, typename T>
-		struct hidden_arg_appender;
-		// Вспомогательный шаблон для добавления аргумента если он не скрыт
-		// Hidden=true -> пустая реализация (аргумент скрывается)
-		template<typename T>
-		struct hidden_arg_appender<true, T> {
+		template<bool B, typename T>
+		struct hidden_arg_appender {
 			static void append(std::string&, bool&) {
 				// nothing - аргумент скрывается
 			}
 		};
 
-		// Hidden=false -> добавляем тип
 		template<typename T>
 		struct hidden_arg_appender<false, T> {
 			static void append(std::string& s, bool& first) {
@@ -211,30 +159,108 @@ inline constexpr bool is_hidden_class_template_arg_v<Template<Args...>> = false;
 	};
 }
 
+
+#pragma region fundamental_macro
+
+// macro registration for fundamental types
+#define REGISTER_FUNDAMENTAL_TYPE(Type, Name)\
+namespace my::detail {\
+	template<>\
+	struct fundamental_type_name<Type> {\
+		static std::string name() {\
+			return Name;\
+		}\
+	};\
+}
+
 // @formatter:off
-REGISTER_FUNDAMENTAL_TYPE(unsigned, "unsigned");
-REGISTER_FUNDAMENTAL_TYPE(int, "int");
-REGISTER_FUNDAMENTAL_TYPE(float, "float");
-REGISTER_FUNDAMENTAL_TYPE(double, "double");
-REGISTER_FUNDAMENTAL_TYPE(char, "char");
-REGISTER_FUNDAMENTAL_TYPE(bool, "bool");
-REGISTER_FUNDAMENTAL_TYPE(long, "long");
-REGISTER_FUNDAMENTAL_TYPE(long long, "long long");
-REGISTER_FUNDAMENTAL_TYPE(void, "void");
-
-REGISTER_TEMPLATE_TYPENAME(std::vector, "vector");
-REGISTER_TEMPLATE_TYPENAME(std::map, "map");
-REGISTER_TEMPLATE_TYPENAME(std::set, "set");
-REGISTER_TEMPLATE_TYPENAME(std::pair, "pair");
-REGISTER_TEMPLATE_TYPENAME(std::optional, "optional");
-REGISTER_TEMPLATE_TYPENAME(std::tuple, "tuple");
-REGISTER_TEMPLATE_TYPENAME(std::variant, "variant");
-REGISTER_TEMPLATE_TYPENAME(std::shared_ptr, "shared_ptr");
-
-REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(std::allocator)
-REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(std::less)
-REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(std::greater)
-REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(std::default_delete)
-REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(std::hash)
-REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(std::equal_to)
+REGISTER_FUNDAMENTAL_TYPE(unsigned, "unsigned")
+REGISTER_FUNDAMENTAL_TYPE(int, "int")
+REGISTER_FUNDAMENTAL_TYPE(float, "float")
+REGISTER_FUNDAMENTAL_TYPE(double, "double")
+REGISTER_FUNDAMENTAL_TYPE(char, "char")
+REGISTER_FUNDAMENTAL_TYPE(bool, "bool")
+REGISTER_FUNDAMENTAL_TYPE(long, "long")
+REGISTER_FUNDAMENTAL_TYPE(long long, "long long")
+REGISTER_FUNDAMENTAL_TYPE(void, "void")
 // @formatter:on
+
+#pragma endregion
+
+// macro registration for custom types
+#define REGISTER_TYPE_NAME(Type, Name)\
+namespace my::detail {\
+	template<>\
+	constexpr std::string_view type_name_v<Type> = Name;\
+}
+
+#pragma region template_type_name_macro
+
+// macro registration for template classes
+#define REGISTER_TEMPLATE_TYPE_NAME(Template, Name)\
+namespace my::detail {\
+	template<>\
+	constexpr std::string_view template_type_name_v<Template> = Name;\
+}
+
+// @formatter:off
+REGISTER_TEMPLATE_TYPE_NAME(std::vector, "vector")
+REGISTER_TEMPLATE_TYPE_NAME(std::map, "map")
+REGISTER_TEMPLATE_TYPE_NAME(std::set, "set")
+REGISTER_TEMPLATE_TYPE_NAME(std::pair, "pair")
+REGISTER_TEMPLATE_TYPE_NAME(std::optional, "optional")
+REGISTER_TEMPLATE_TYPE_NAME(std::tuple, "tuple")
+REGISTER_TEMPLATE_TYPE_NAME(std::variant, "variant")
+REGISTER_TEMPLATE_TYPE_NAME(std::shared_ptr, "shared_ptr")
+REGISTER_TEMPLATE_TYPE_NAME(type_name, "type_name")
+
+REGISTER_TEMPLATE_TYPE_NAME(std::allocator, "allocator")
+REGISTER_TEMPLATE_TYPE_NAME(std::less, "less")
+REGISTER_TEMPLATE_TYPE_NAME(std::greater, "greater")
+REGISTER_TEMPLATE_TYPE_NAME(std::default_delete, "default_delete")
+REGISTER_TEMPLATE_TYPE_NAME(std::hash, "hash")
+REGISTER_TEMPLATE_TYPE_NAME(std::equal_to, "equal_to")
+// @formatter:on
+
+#pragma endregion
+
+#pragma region hide_template_type_name_macro
+
+// macro registration for hidden template arguments type names
+#define HIDE_TEMPLATE_ARG_TYPE_NAME(Type)\
+namespace my::detail {\
+	template<>\
+	inline constexpr bool is_hidden_class_template_arg_v<Type> = true;\
+}
+
+// macro registration for showed template arguments type names
+#define SHOW_TEMPLATE_ARG_TYPE_NAME(Type)\
+namespace my::detail {\
+	template<>\
+	inline constexpr bool is_hidden_class_template_arg_v<Type> = false;\
+}
+
+// macro registration for hidden template arguments template type names
+#define HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(TemplateClass)\
+namespace my::detail {\
+	template<typename... Args>\
+	inline constexpr bool is_hidden_class_template_arg_v<TemplateClass<Args...>> = true;\
+}
+
+// macro registration for showed template arguments template type names
+#define SHOW_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(TemplateClass)\
+namespace my::detail {\
+	template<typename... Args>\
+	inline constexpr bool is_hidden_class_template_arg_v<TemplateClass<Args...>> = false;\
+}
+
+// @formatter:off
+HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(std::allocator)
+HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(std::less)
+HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(std::greater)
+HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(std::default_delete)
+HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(std::hash)
+HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(std::equal_to)
+// @formatter:on
+
+#pragma endregion
