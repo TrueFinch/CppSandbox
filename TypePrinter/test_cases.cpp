@@ -5,6 +5,11 @@
 #include "type_name.h"
 #include <string>
 #include <map>
+#include <memory>
+#include <optional>
+#include <set>
+#include <tuple>
+#include <variant>
 
 TEST_CASE("TypePrinter fundamental types", "[TypePrinter]") {
 	SECTION("simple types") {
@@ -206,14 +211,6 @@ TEST_CASE("TypePrinter function pointers", "[TypePrinter]") {
 		CHECK(my::type_name<pf4>::name() == "const int*(*)(const int&)");
 	}
 
-	// SECTION("function pointer const variations") {
-	// 	auto cfp1 = static_cast<void (*)(int) const>(nullptr);
-	// 	auto cfp2 = static_cast<double (*)(double, char) const>(nullptr);
-	//
-	// 	CHECK(my::type_name<std::remove_pointer_t<decltype(cfp1)>>::name() == "void(int) const");
-	// 	CHECK(my::type_name<std::remove_pointer_t<decltype(cfp2)>>::name() == "double(double, char) const");
-	// }
-
 	SECTION("double pointer to function") {
 		using pfp1 = void(**)(int);
 		using pfp2 = double(**)(double, char);
@@ -293,40 +290,70 @@ TEST_CASE("TypePrinter custom classes", "[TypePrinter]") {
 
 TEST_CASE("Template class parameters", "[TypePrinter]") {
 	SECTION("map types") {
-		CHECK(my::type_name<std::map<int, int>>::name() == "unknown<int, int>");
-		CHECK(my::type_name<std::map<int, std::vector<double>>>::name() == "unknown<int, vector<double>>");
+		CHECK(my::type_name<std::map<int, int>>::name() == "map<int, int>");
+		CHECK(my::type_name<std::map<int, std::vector<double>>>::name() == "map<int, vector<double>>");
 	}
 
 	SECTION("pair types") {
-		CHECK(my::type_name<std::pair<int, double>>::name() == "unknown<int, double>");
-		CHECK(my::type_name<std::pair<std::string, std::string>>::name() == "unknown<string, string>");
+		CHECK(my::type_name<std::pair<int, double>>::name() == "pair<int, double>");
+		CHECK(my::type_name<std::pair<std::string, std::string>>::name() == "pair<string, string>");
 	}
 
 	SECTION("optional types") {
-		CHECK(my::type_name<std::optional<int>>::name() == "unknown<int>");
-		CHECK(my::type_name<std::optional<std::string>>::name() == "unknown<string>");
+		CHECK(my::type_name<std::optional<int>>::name() == "optional<int>");
+		CHECK(my::type_name<std::optional<std::string>>::name() == "optional<string>");
 	}
 
 	SECTION("tuple types") {
-		CHECK(my::type_name<std::tuple<int, std::string, double>>::name() == "unknown<int, string, double>");
+		CHECK(my::type_name<std::tuple<int, std::string, double>>::name() == "tuple<int, string, double>");
 	}
 
 	SECTION("variant types") {
-		CHECK(my::type_name<std::variant<int, double>>::name() == "unknown<int, double>");
+		CHECK(my::type_name<std::variant<int, double>>::name() == "variant<int, double>");
 	}
 
 	SECTION("shared_ptr types") {
-		CHECK(my::type_name<std::shared_ptr<int>>::name() == "unknown<int>");
-		CHECK(my::type_name<std::shared_ptr<std::string>>::name() == "unknown<string>");
+		CHECK(my::type_name<std::shared_ptr<int>>::name() == "shared_ptr<int>");
+		CHECK(my::type_name<std::shared_ptr<std::string>>::name() == "shared_ptr<string>");
 	}
 
 	SECTION("const template params") {
-		CHECK(my::type_name<const std::map<int, int>&>::name() == "const unknown<int, int>&");
-		CHECK(my::type_name<const std::map<int, int>*>::name() == "const unknown<int, int>*");
-		CHECK(my::type_name<std::map<int, int>* const>::name() == "unknown<int, int>* const");
+		CHECK(my::type_name<const std::map<int, int>&>::name() == "const map<int, int>&");
+		CHECK(my::type_name<const std::map<int, int>*>::name() == "const map<int, int>*");
+		CHECK(my::type_name<std::map<int, int>* const>::name() == "map<int, int>* const");
 	}
 
 	SECTION("pointer template params") {
-		CHECK(my::type_name<std::map<int, int>*>::name() == "unknown<int, int>*");
+		CHECK(my::type_name<std::map<int, int>*>::name() == "map<int, int>*");
+	}
+
+	SECTION("hidden template args - vector") {
+		CHECK(my::type_name<std::vector<int>>::name() == "vector<int>");
+		CHECK(my::type_name<std::vector<std::string>>::name() == "vector<string>");
+		CHECK(my::type_name<std::vector<double>>::name() == "vector<double>");
+		CHECK(my::type_name<std::vector<int>&>::name() == "vector<int>&");
+		CHECK(my::type_name<const std::vector<int>&>::name() == "const vector<int>&");
+	}
+
+	SECTION("hidden template args - map") {
+		CHECK(my::type_name<std::map<int, std::string>>::name() == "map<int, string>");
+		CHECK(my::type_name<std::map<std::string, int>>::name() == "map<string, int>");
+		CHECK(my::type_name<std::map<int, double>>::name() == "map<int, double>");
+	}
+
+	SECTION("hidden template args - set") {
+		CHECK(my::type_name<std::set<int>>::name() == "set<int>");
+		CHECK(my::type_name<std::set<std::string>>::name() == "set<string>");
+	}
+
+	SECTION("hidden template args - nested containers") {
+		CHECK(my::type_name<std::vector<std::vector<int>>>::name() == "vector<vector<int>>");
+		CHECK(my::type_name<std::map<int, std::vector<double>>>::name() == "map<int, vector<double>>");
+		CHECK(my::type_name<std::vector<std::map<std::string, int>>>::name() == "vector<map<string, int>>");
+	}
+
+	SECTION("hidden template args - custom hidden") {
+		CHECK(my::type_name<test_classes::MyTemplateClass<int>>::name() == "MyTemplateClass<int>");
+		CHECK(my::type_name<test_classes::MyTemplateClass<std::string>>::name() == "MyTemplateClass<string>");
 	}
 }

@@ -5,13 +5,20 @@
 #pragma once
 
 #include <map>
+#include <memory>
+#include <optional>
 #include <set>
 #include <string_view>
 #include <vector>
 #include <type_traits>
 #include <string>
+#include <variant>
 
 namespace my {
+	// forward declaration to use in detail namespace
+	template<typename T>
+	struct type_name_impl;
+
 	namespace detail {
 		template<typename T>
 		constexpr bool always_false_v = false;
@@ -19,7 +26,7 @@ namespace my {
 		template<typename T>
 		struct enforce_fundamental {
 			static_assert(std::is_fundamental_v<T>,
-						"Error: fundamental_type_name can only be specialized for fundamental types!");
+						"Fundamental_type_name can only be specialized for fundamental types!");
 			using type = T;
 		};
 
@@ -47,12 +54,12 @@ return Name;\
 }
 
 		template<template<typename...> class C>
-		constexpr std::string_view template_name_v = "unknown";
+		constexpr std::string_view template_type_name_v = "unknown";
 
 #define REGISTER_TEMPLATE_TYPENAME(Template, Name)\
 namespace my::detail {\
 template<>\
-constexpr std::string_view template_name_v<Template> = Name;\
+constexpr std::string_view template_type_name_v<Template> = Name;\
 }
 
 		template<typename T>
@@ -62,6 +69,57 @@ constexpr std::string_view template_name_v<Template> = Name;\
 namespace my::detail {\
 template<> constexpr std::string_view type_name_v<Type> = Name;\
 }
+
+		// ---- is_hidden_template_arg & is_hidden_class_template_arg_v ----
+
+		// Трейт для точного совпадения типа (срабатывает при точном совпадении)
+		template<typename T>
+		concept is_hidden_template_arg = false;
+
+#define REGISTER_HIDDEN_TEMPLATE_ARG(Type)\
+namespace my::detail {\
+template<>\
+concept is_hidden_template_arg<Type> = true;\
+}
+
+		// Трейт для шаблонных классов (срабатывает для всех спецификаций Template<Args...>)
+		template<typename T>
+		inline constexpr bool is_hidden_class_template_arg_v = false;
+
+#define REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(Template)\
+namespace my::detail {\
+template<typename... Args>\
+inline constexpr bool is_hidden_class_template_arg_v<Template<Args...>> = true;\
+}
+
+#define UNREGISTER_HIDDEN_TEMPLATE_ARG_CLASS(Template)\
+namespace my::detail {\
+template<typename... Args>\
+inline constexpr bool is_hidden_class_template_arg_v<Template<Args...>> = false;\
+}
+
+		// Комбинированный трейт — аргумент нужно скрывать
+		template<typename T>
+		concept is_hidden_arg = is_hidden_template_arg<T> || is_hidden_class_template_arg_v<T>;
+
+		template<bool Hidden, typename T>
+		struct hidden_arg_appender;
+		// Вспомогательный шаблон для добавления аргумента если он не скрыт
+		// Hidden=true -> пустая реализация (аргумент скрывается)
+		template<typename T>
+		struct hidden_arg_appender<true, T> {
+			static void append(std::string&, bool&) {
+				// nothing - аргумент скрывается
+			}
+		};
+
+		// Hidden=false -> добавляем тип
+		template<typename T>
+		struct hidden_arg_appender<false, T> {
+			static void append(std::string& s, bool& first) {
+				s += (first ? (first = false, "") : ", ") + type_name_impl<T>::build();
+			}
+		};
 	}
 
 	template<typename T>
@@ -123,10 +181,10 @@ template<> constexpr std::string_view type_name_v<Type> = Name;\
 		static std::string build(const std::string& decl = "") {
 			std::string args_str = "<";
 			bool first = true;
-			((args_str += (first ? (first = false, "") : ", ") + type_name_impl<Args>::build()), ...);
+			((detail::hidden_arg_appender<detail::is_hidden_arg<Args>, Args>::append(args_str, first)), ...);
 			args_str += ">";
 
-			return std::string(detail::template_name_v<C>) + args_str + decl;
+			return std::string(detail::template_type_name_v<C>) + args_str + decl;
 		}
 	};
 
@@ -167,4 +225,16 @@ REGISTER_FUNDAMENTAL_TYPE(void, "void");
 REGISTER_TEMPLATE_TYPENAME(std::vector, "vector");
 REGISTER_TEMPLATE_TYPENAME(std::map, "map");
 REGISTER_TEMPLATE_TYPENAME(std::set, "set");
+REGISTER_TEMPLATE_TYPENAME(std::pair, "pair");
+REGISTER_TEMPLATE_TYPENAME(std::optional, "optional");
+REGISTER_TEMPLATE_TYPENAME(std::tuple, "tuple");
+REGISTER_TEMPLATE_TYPENAME(std::variant, "variant");
+REGISTER_TEMPLATE_TYPENAME(std::shared_ptr, "shared_ptr");
+
+REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(std::allocator)
+REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(std::less)
+REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(std::greater)
+REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(std::default_delete)
+REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(std::hash)
+REGISTER_HIDDEN_TEMPLATE_ARG_CLASS(std::equal_to)
 // @formatter:on
