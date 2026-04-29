@@ -11,6 +11,10 @@
 #include <tuple>
 #include <variant>
 
+REGISTER_FUNDAMENTAL_TYPE(short);
+
+REGISTER_FUNDAMENTAL_TYPE_WITH_NAME(unsigned long, "long unsigned");
+
 TEST_CASE("TypePrinter fundamental types", "[TypePrinter]") {
 	SECTION("simple types") {
 		CHECK(my::type_name<int>::name() == "int");
@@ -39,14 +43,12 @@ TEST_CASE("TypePrinter fundamental types", "[TypePrinter]") {
 		CHECK(my::type_name<const int**>::name() == "const int**");
 		CHECK(my::type_name<int** const>::name() == "int** const");
 		CHECK(my::type_name<int* const* const>::name() == "int* const* const");
-		CHECK(my::type_name<const int* const*>::name() == "const int* const*");
 		CHECK(my::type_name<const int** const>::name() == "const int** const");
 
 		// triple pointers
 		CHECK(my::type_name<int***>::name() == "int***");
 		CHECK(my::type_name<int*** const>::name() == "int*** const");
 		CHECK(my::type_name<const int***>::name() == "const int***");
-		CHECK(my::type_name<const int** const>::name() == "const int** const");
 		CHECK(my::type_name<int* const**>::name() == "int* const**");
 
 		// rvalue references
@@ -71,9 +73,11 @@ TEST_CASE("TypePrinter fundamental types", "[TypePrinter]") {
 		CHECK(my::type_name<float&&>::name() == "float&&");
 	}
 
-	// SECTION("unsupported fundamental types") {
-	// 	CHECK_FALSE(my::type_name<unsigned>::name() == "unsigned");
-	// }
+	SECTION("unsupported fundamental types") {
+		// 'short' is supported because we registered it via macro above
+		CHECK(my::type_name<short>::name() == "short");
+		CHECK(my::type_name<unsigned long>::name() == "long unsigned");
+	}
 }
 
 TEST_CASE("TypePrinter containers", "[TypePrinter]") {
@@ -89,7 +93,6 @@ TEST_CASE("TypePrinter containers", "[TypePrinter]") {
 
 	SECTION("vector variations") {
 		CHECK(my::type_name<std::vector<double>>::name() == "vector<double>");
-		CHECK(my::type_name<std::vector<double>>::name() == "vector<double>");
 		CHECK(my::type_name<std::vector<const int>>::name() == "vector<const int>");
 		CHECK(my::type_name<std::vector<int&>>::name() == "vector<int&>");
 		CHECK(my::type_name<std::vector<int*>>::name() == "vector<int*>");
@@ -99,8 +102,6 @@ TEST_CASE("TypePrinter containers", "[TypePrinter]") {
 		using pf4 = void (*)();
 		CHECK(my::type_name<std::vector<pf4>>::name() == "vector<void(*)()>");
 	}
-
-	SECTION("unordered_map<int, int>") {}
 }
 
 namespace test_functions {
@@ -240,14 +241,9 @@ TEST_CASE("TypePrinter function pointers", "[TypePrinter]") {
 
 
 namespace test_classes {
-	class MyClass {
-	public:
-		constexpr static std::string_view name = "MyClass";
-	};
+	class MyClass {};
 
-	struct MyStruct {
-		// constexpr static std::string_view name = "MyStruct";
-	};
+	struct MyStruct {};
 
 
 	template<typename T>
@@ -256,11 +252,11 @@ namespace test_classes {
 	};
 }
 
-REGISTER_TYPE_NAME(test_classes::MyStruct, "MyStruct");
+REGISTER_TYPE_WITH_NAME(test_classes::MyStruct, "MyStruct");
 
-REGISTER_TYPE_NAME(test_classes::MyClass, "MyClass");
+REGISTER_TYPE_WITH_NAME(test_classes::MyClass, "MyClass");
 
-REGISTER_TEMPLATE_TYPE_NAME(test_classes::MyTemplateClass, "MyTemplateClass");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(test_classes::MyTemplateClass, "MyTemplateClass");
 
 
 TEST_CASE("TypePrinter custom classes", "[TypePrinter]") {
@@ -287,22 +283,29 @@ TEST_CASE("TypePrinter custom classes", "[TypePrinter]") {
 	}
 }
 
-SHOW_TEMPLATE_ARG_TYPE_NAME(std::allocator<test_classes::MyStruct>)
+SHOW_TYPE_ARG(std::allocator<test_classes::MyStruct>)
 
 namespace test_classes {
 	struct HiddenStruct {};
 
 	template<typename T>
 	struct TemplateHiddenStruct {};
+
+	template<typename T>
+	struct TemplateAlwaysShowedStruct {};
 }
 
-HIDE_TEMPLATE_ARG_TYPE_NAME(test_classes::MyTemplateClass<int>)
+HIDE_TYPE_ARG(test_classes::MyTemplateClass<int>)
 
-HIDE_TEMPLATE_ARG_TYPE_NAME(std::allocator<test_classes::HiddenStruct>)
+HIDE_TYPE_ARG(std::allocator<test_classes::HiddenStruct>)
 
-HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(test_classes::TemplateHiddenStruct);
+HIDE_TEMPLATE_ARG(test_classes::TemplateHiddenStruct)
 
-TEST_CASE("Template class parameters", "[TypePrinter]") {
+SHOW_TEMPLATE_ARG(test_classes::TemplateAlwaysShowedStruct)
+
+REGISTER_TEMPLATE_TYPE_WITH_NAME(test_classes::TemplateAlwaysShowedStruct, "TemplateAlwaysShowedStruct");
+
+TEST_CASE("TypePrinter template class parameters", "[TypePrinter]") {
 	SECTION("map types") {
 		CHECK(my::type_name<std::map<int, int>>::name() == "map<int, int>");
 		CHECK(my::type_name<std::map<int, std::vector<double>>>::name() == "map<int, vector<double>>");
@@ -367,14 +370,23 @@ TEST_CASE("Template class parameters", "[TypePrinter]") {
 	}
 
 	SECTION("hidden template args - custom hidden") {
-		CHECK(my::type_name<std::vector<test_classes::MyTemplateClass<int>>>::name() == "vector<>");
-		CHECK(my::type_name<std::vector<test_classes::TemplateHiddenStruct<int>>>::name() == "vector<>");
+		using namespace test_classes;
+		CHECK(my::type_name<std::vector<MyTemplateClass<int>>>::name() == "vector<>");
+		CHECK(my::type_name<std::vector<MyTemplateClass<double>>>::name() ==
+			"vector<MyTemplateClass<double>>");
+		CHECK(my::type_name<std::vector<TemplateHiddenStruct<int>>>::name() == "vector<>");
+		CHECK(my::type_name<std::vector<TemplateHiddenStruct<double>>>::name() == "vector<>");
 	}
 
 	SECTION("hidden template args - custom showed") {
+		using namespace test_classes;
 		// This tests that a specific type can be shown while others remain hidden
-		// std::allocator<int> should be shown, but other allocators should be hidden
-		CHECK(my::type_name<std::vector<test_classes::MyStruct,
-			std::allocator<test_classes::MyStruct>>>::name() == "vector<MyStruct, allocator<MyStruct>>");
+		// std::allocator<MyStruct> should be shown, but other allocators should be hidden
+		CHECK(my::type_name<std::vector<MyStruct,
+			std::allocator<MyStruct>>>::name() == "vector<MyStruct, allocator<MyStruct>>");
+
+		// This tests that a template class explicitly marked as shown is displayed
+		CHECK(my::type_name<std::vector<TemplateAlwaysShowedStruct<int>>>::name() ==
+			"vector<TemplateAlwaysShowedStruct<int>>");
 	}
 }

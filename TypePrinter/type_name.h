@@ -163,63 +163,75 @@ namespace my {
 #pragma region fundamental_macro
 
 // macro registration for fundamental types
-#define REGISTER_FUNDAMENTAL_TYPE(Type, Name)\
-namespace my::detail {\
-	template<>\
-	struct fundamental_type_name<Type> {\
-		static std::string name() {\
-			return Name;\
-		}\
-	};\
-}
+#define REGISTER_FUNDAMENTAL_TYPE_WITH_NAME(Type, Name)\
+template<>\
+struct my::detail::fundamental_type_name<Type> {\
+	static std::string name() {\
+		return Name;\
+	}\
+};
+// macro registration for fundamental types
+#define REGISTER_FUNDAMENTAL_TYPE(Type)\
+template<>\
+struct my::detail::fundamental_type_name<Type> {\
+	static std::string name() {\
+		return #Type;\
+	}\
+};
 
 // @formatter:off
-REGISTER_FUNDAMENTAL_TYPE(unsigned, "unsigned")
-REGISTER_FUNDAMENTAL_TYPE(int, "int")
-REGISTER_FUNDAMENTAL_TYPE(float, "float")
-REGISTER_FUNDAMENTAL_TYPE(double, "double")
-REGISTER_FUNDAMENTAL_TYPE(char, "char")
-REGISTER_FUNDAMENTAL_TYPE(bool, "bool")
-REGISTER_FUNDAMENTAL_TYPE(long, "long")
-REGISTER_FUNDAMENTAL_TYPE(long long, "long long")
-REGISTER_FUNDAMENTAL_TYPE(void, "void")
+REGISTER_FUNDAMENTAL_TYPE(unsigned)
+REGISTER_FUNDAMENTAL_TYPE(int)
+REGISTER_FUNDAMENTAL_TYPE(float)
+REGISTER_FUNDAMENTAL_TYPE(double)
+REGISTER_FUNDAMENTAL_TYPE(char)
+REGISTER_FUNDAMENTAL_TYPE(bool)
+REGISTER_FUNDAMENTAL_TYPE(long)
+REGISTER_FUNDAMENTAL_TYPE(long long)
+REGISTER_FUNDAMENTAL_TYPE(void)
 // @formatter:on
 
 #pragma endregion
 
 // macro registration for custom types
-#define REGISTER_TYPE_NAME(Type, Name)\
-namespace my::detail {\
-	template<>\
-	constexpr std::string_view type_name_v<Type> = Name;\
-}
+#define REGISTER_TYPE(Type)\
+template<>\
+constexpr std::string_view my::detail::type_name_v<Type> = #Type
+
+// macro registration for custom types
+#define REGISTER_TYPE_WITH_NAME(Type, Name)\
+template<>\
+constexpr std::string_view my::detail::type_name_v<Type> = Name
 
 #pragma region template_type_name_macro
 
 // macro registration for template classes
-#define REGISTER_TEMPLATE_TYPE_NAME(Template, Name)\
-namespace my::detail {\
+#define REGISTER_TEMPLATE_TYPE(Template)\
+template<>\
+constexpr std::string_view my::detail::template_type_name_v<Template> = #Template
+
+// macro registration for template classes
+#define REGISTER_TEMPLATE_TYPE_WITH_NAME(Template, Name)\
 	template<>\
-	constexpr std::string_view template_type_name_v<Template> = Name;\
-}
-
+	constexpr std::string_view my::detail::template_type_name_v<Template> = Name
 // @formatter:off
-REGISTER_TEMPLATE_TYPE_NAME(std::vector, "vector")
-REGISTER_TEMPLATE_TYPE_NAME(std::map, "map")
-REGISTER_TEMPLATE_TYPE_NAME(std::set, "set")
-REGISTER_TEMPLATE_TYPE_NAME(std::pair, "pair")
-REGISTER_TEMPLATE_TYPE_NAME(std::optional, "optional")
-REGISTER_TEMPLATE_TYPE_NAME(std::tuple, "tuple")
-REGISTER_TEMPLATE_TYPE_NAME(std::variant, "variant")
-REGISTER_TEMPLATE_TYPE_NAME(std::shared_ptr, "shared_ptr")
-REGISTER_TEMPLATE_TYPE_NAME(type_name, "type_name")
 
-REGISTER_TEMPLATE_TYPE_NAME(std::allocator, "allocator")
-REGISTER_TEMPLATE_TYPE_NAME(std::less, "less")
-REGISTER_TEMPLATE_TYPE_NAME(std::greater, "greater")
-REGISTER_TEMPLATE_TYPE_NAME(std::default_delete, "default_delete")
-REGISTER_TEMPLATE_TYPE_NAME(std::hash, "hash")
-REGISTER_TEMPLATE_TYPE_NAME(std::equal_to, "equal_to")
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::vector, "vector");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::map, "map");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::set, "set");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::pair, "pair");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::optional, "optional");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::tuple, "tuple");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::variant, "variant");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::shared_ptr, "shared_ptr");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(my::type_name, "type_name");
+
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::allocator, "allocator");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::less, "less");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::greater, "greater");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::default_delete, "default_delete");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::hash, "hash");
+REGISTER_TEMPLATE_TYPE_WITH_NAME(std::equal_to, "equal_to");
 // @formatter:on
 
 #pragma endregion
@@ -227,40 +239,32 @@ REGISTER_TEMPLATE_TYPE_NAME(std::equal_to, "equal_to")
 #pragma region hide_template_type_name_macro
 
 // macro registration for hidden template arguments type names
-#define HIDE_TEMPLATE_ARG_TYPE_NAME(Type)\
-namespace my::detail {\
+#define HIDE_TYPE_ARG(Type)\
 	template<>\
-	inline constexpr bool is_hidden_class_template_arg_v<Type> = true;\
-}
+	inline constexpr bool my::detail::is_hidden_class_template_arg_v<Type> = true;
 
 // macro registration for showed template arguments type names
-#define SHOW_TEMPLATE_ARG_TYPE_NAME(Type)\
-namespace my::detail {\
+#define SHOW_TYPE_ARG(Type)\
 	template<>\
-	inline constexpr bool is_hidden_class_template_arg_v<Type> = false;\
-}
+	inline constexpr bool my::detail::is_hidden_class_template_arg_v<Type> = false;
 
 // macro registration for hidden template arguments template type names
-#define HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(TemplateClass)\
-namespace my::detail {\
+#define HIDE_TEMPLATE_ARG(TemplateClass)\
 	template<typename... Args>\
-	inline constexpr bool is_hidden_class_template_arg_v<TemplateClass<Args...>> = true;\
-}
+	inline constexpr bool my::detail::is_hidden_class_template_arg_v<TemplateClass<Args...>> = true;
 
 // macro registration for showed template arguments template type names
-#define SHOW_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(TemplateClass)\
-namespace my::detail {\
+#define SHOW_TEMPLATE_ARG(TemplateClass)\
 	template<typename... Args>\
-	inline constexpr bool is_hidden_class_template_arg_v<TemplateClass<Args...>> = false;\
-}
+	inline constexpr bool my::detail::is_hidden_class_template_arg_v<TemplateClass<Args...>> = false;
 
 // @formatter:off
-HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(std::allocator)
-HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(std::less)
-HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(std::greater)
-HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(std::default_delete)
-HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(std::hash)
-HIDE_TEMPLATE_ARG_TEMPLATE_TYPE_NAME(std::equal_to)
+HIDE_TEMPLATE_ARG(std::allocator)
+HIDE_TEMPLATE_ARG(std::less)
+HIDE_TEMPLATE_ARG(std::greater)
+HIDE_TEMPLATE_ARG(std::default_delete)
+HIDE_TEMPLATE_ARG(std::hash)
+HIDE_TEMPLATE_ARG(std::equal_to)
 // @formatter:on
 
 #pragma endregion
